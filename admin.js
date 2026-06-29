@@ -332,3 +332,28 @@ function showAdminToast(msg) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 3000);
 }
+
+function exportProductsJSON() {
+  const data = JSON.stringify(products, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "brazzaphone-products.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  showAdminToast("📥 Fichier JSON téléchargé !");
+}
+
+function copyProductsForScript() {
+  const lines = products.map(p => {
+    return `  { id: ${p.id}, name: "${p.name}", price: ${p.price}, oldPrice: ${p.oldPrice ?? null}, category: "${p.category}", badge: ${p.badge ? `"${p.badge}"` : null}, image: "${p.image}" }`;
+  }).join(",\n");
+  const code = `const products = [\n${lines}\n];`;
+  navigator.clipboard.writeText(code).then(() => {
+    showAdminToast("📋 Code copié ! Colle-le dans script.js");
+  }).catch(() => {
+    showAdminToast("⚠️ Copie échouée, essaie sur Chrome.");
+  });
+}
+

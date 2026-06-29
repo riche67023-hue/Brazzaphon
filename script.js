@@ -130,12 +130,23 @@ let currentSearch  = "";
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", () => {
   // Charger les produits ajoutés/modifiés depuis l'admin
-  const saved = localStorage.getItem("bpAdminProducts");
-  const adminProducts = saved ? JSON.parse(saved) : null;
+  // (fallback pour éviter le cas où bpAdminProducts n'est pas renseigné dans la session courante)
+  const savedAdmin = localStorage.getItem("bpAdminProducts");
+  const savedProducts = localStorage.getItem("bpProducts");
 
-  if (adminProducts && Array.isArray(adminProducts) && adminProducts.length) {
+  const adminProducts = savedAdmin ? JSON.parse(savedAdmin) : null;
+  const publicProducts = savedProducts ? JSON.parse(savedProducts) : null;
+
+  const nextProducts = (
+    adminProducts && Array.isArray(adminProducts) && adminProducts.length
+  ) ? adminProducts
+    : (publicProducts && Array.isArray(publicProducts) && publicProducts.length)
+      ? publicProducts
+      : null;
+
+  if (nextProducts) {
     // On remplace dynamiquement la liste utilisée pour le catalogue
-    window.PRODUCTS = adminProducts;
+    window.PRODUCTS = nextProducts;
   }
 
   renderProducts(window.PRODUCTS);
