@@ -19,7 +19,7 @@ window.PRODUCTS = [
     oldPrice: 210000,
     category: "neuf",
     badge: "🔥 Promo",
-    image: "images/samsung-a55.jpg"
+    image: "images/iphone17.jpg"
   },
   {
     id: 2,
@@ -28,7 +28,7 @@ window.PRODUCTS = [
     oldPrice: null,
     category: "neuf",
     badge: "⭐ Nouveau",
-    image: "images/samsung-a35.jpg"
+    image: "images/coque-magsafe-noir.jpg"
   },
   {
     id: 3,
@@ -37,7 +37,7 @@ window.PRODUCTS = [
     oldPrice: 310000,
     category: "reconditionne",
     badge: "♻️ Recond.",
-    image: "images/iphone13.jpg"
+    image: "images/coque-magsafe-blanc.jpg"
   },
   {
     id: 4,
