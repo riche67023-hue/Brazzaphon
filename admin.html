@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – Brazzaphone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+
+
+  <!-- LOGIN -->
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">
+        <img class="logo-img" src="logo-brazzaphone.png.jpeg" alt="Brazzaphone" style="height: 60px; width: auto;" />
+      </div>
+
+      <h2>Espace Admin</h2>
+      <p>Connectez-vous pour gérer vos produits</p>
+      <div class="form-group">
+        <label for="loginUser">Nom d'utilisateur</label>
+        <input type="text" id="loginUser" placeholder="admin" />
+      </div>
+
+      <div class="form-group">
+        <label for="loginPass">Mot de passe</label>
+          <div class="pass-row">
+            <input type="password" id="loginPass" placeholder="••••••••" aria-label="Mot de passe" />
+
+          <button type="button" class="toggle-pass" onclick="togglePassword()">👁️</button>
+        </div>
+      </div>
+      <button onclick="doLogin()">Se connecter</button>
+      <p class="login-error" id="loginError"></p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="dashboard" id="dashboard" style="display:none;">
+
+    <!-- Mobile burger + overlay -->
+    <button class="admin-burger" type="button" aria-label="Ouvrir le menu" onclick="toggleAdminMenu()">☰</button>
+    <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true" onclick="toggleAdminMenu()"></div>
+
+
+    <!-- Sidebar (desktop + mobile tiroir) -->
+    <aside class="sidebar" id="adminSidebar">
+      <div class="sidebar-logo">📱 Brazza<span>phone</span></div>
+      <nav class="sidebar-nav">
+        <button class="sidebar-btn active" onclick="showSection('products')">📦 Produits</button>
+        <button class="sidebar-btn" onclick="showSection('orders')">🛒 Commandes</button>
+        <button class="sidebar-btn" onclick="showSection('stats')">📊 Statistiques</button>
+      </nav>
+      <button class="logout-btn" onclick="doLogout()">🚪 Déconnexion</button>
+    </aside>
+
+
+    <!-- Main -->
+    <main class="admin-main">
+
+      <!-- ===== PRODUITS ===== -->
+      <section class="section" id="section-products">
+        <div class="section-toolbar">
+          <h1>📦 Gestion des Produits</h1>
+          <button class="btn-primary" onclick="openProductModal()">+ Ajouter un produit</button>
+        </div>
+
+        <div class="filters-bar">
+          <input type="text" id="adminSearch" placeholder="Rechercher…" oninput="renderAdminProducts()" />
+          <select id="adminCatFilter" onchange="renderAdminProducts()">
+            <option value="all">Toutes catégories</option>
+            <option value="neuf">Neufs</option>
+            <option value="reconditionne">Reconditionnés</option>
+            <option value="accessoire">Accessoires</option>
+          </select>
+        </div>
+
+        <div class="stats-mini" id="miniStats"></div>
+
+        <div class="table-wrap">
+          <table class="products-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Nom</th>
+                <th>Catégorie</th>
+                <th>Prix</th>
+                <th>Ancien prix</th>
+                <th>Badge</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== COMMANDES ===== -->
+      <section class="section" id="section-orders" style="display:none;">
+        <h1>🛒 Commandes</h1>
+
+        <div class="orders-info">
+          <div class="info-card">
+            <p>Les commandes sont enregistrées et affichées ici.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:16px;">
+          <table class="products-table" role="table" aria-label="Liste des commandes">
+            <thead>
+              <tr>
+                <th>Date</th>
+
+                <th>Client</th>
+                <th>Téléphone</th>
+                <th>Adresse</th>
+                <th>Articles</th>
+                <th>Total</th>
+                <th>Statut</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody"></tbody>
+          </table>
+          <div id="ordersEmpty" style="display:none;text-align:center;padding:28px;color:#aaa;">Aucune commande.</div>
+        </div>
+      </section>
+
+
+      <!-- ===== STATS ===== -->
+      <section class="section" id="section-stats" style="display:none;">
+        <h1>📊 Statistiques Catalogue</h1>
+        <div class="stats-grid" id="statsGrid"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ===== MODAL PRODUIT ===== -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">Ajouter un produit</h3>
+        <button onclick="closeProductModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId" />
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nom du produit *</label>
+            <input type="text" id="pName" placeholder="Ex: Samsung Galaxy A55" aria-label="Nom du produit" />
+          </div>
+          <div class="form-group">
+            <label for="pCategory">Catégorie *</label>
+            <select id="pCategory" aria-label="Catégorie">
+
+
+              <option value="neuf">📱 Neuf</option>
+              <option value="reconditionne">♻️ Reconditionné</option>
+              <option value="accessoire">🎧 Accessoire</option>
+            </select>
+          </div>
+        </div>
+          <div class="form-row">
+          <div class="form-group">
+            <label for="pPrice">Prix (FCFA) *</label>
+            <input type="number" id="pPrice" placeholder="150000" aria-label="Prix (FCFA)" />
+          </div>
+          <div class="form-group">
+            <label for="pOldPrice">Ancien prix (FCFA)</label>
+            <input type="number" id="pOldPrice" placeholder="Optionnel" aria-label="Ancien prix (FCFA)" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pBadge">Badge</label>
+            <select id="pBadge" aria-label="Badge">
+
+
+              <option value="">Aucun</option>
+              <option value="🔥 Promo">🔥 Promo</option>
+              <option value="⭐ Nouveau">⭐ Nouveau</option>
+              <option value="♻️ Recond.">♻️ Recond.</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Image produit</label>
+
+            <!-- input fichier (upload côté client) -->
+            <input type="file" id="pImageFile" accept="image/*" aria-label="Image produit" />
+
+
+            <!-- hidden: stocke dataURL (base64) utilisée par admin.js -->
+            <input type="hidden" id="pImage" />
+
+            <div id="pImagePreviewWrap" class="image-preview-wrap" style="display:none;">
+              <div class="image-preview-title">Aperçu</div>
+              <img id="pImagePreview" class="image-preview" alt="Aperçu image" />
+              <button type="button" class="btn-secondary image-remove" onclick="clearImagePreview()">Retirer</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="closeProductModal()">Annuler</button>
+          <button class="btn-primary" onclick="saveProduct()">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="adminToast"></div>
+
+  <script src="admin_orders_utils.js"></script>
+  <script src="admin_orders.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
+
