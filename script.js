@@ -32,7 +32,7 @@ window.PRODUCTS = [
   },
   {
     id: 3,
-    name: "iPhone 13 128Go – Reconditionné",
+    name: "iPhone 13 128Go – Recond.",
     price: 250000,
     oldPrice: 310000,
     category: "reconditionne",
@@ -59,7 +59,7 @@ window.PRODUCTS = [
   },
   {
     id: 6,
-    name: "iPhone 12 64Go – Reconditionné",
+    name: "iPhone 12 64Go – Recond.",
     price: 170000,
     oldPrice: 220000,
     category: "reconditionne",
@@ -113,7 +113,7 @@ window.PRODUCTS = [
   },
   {
     id: 12,
-    name: "iPhone 11 64Go – Reconditionné",
+    name: "iPhone 11 64Go – Recond.",
     price: 125000,
     oldPrice: 160000,
     category: "reconditionne",
