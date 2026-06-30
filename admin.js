@@ -6,14 +6,14 @@
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "brazzaphone2025";
 
-function doLogin() {
+async function doLogin() {
   const u = document.getElementById("loginUser").value.trim();
   const p = document.getElementById("loginPass").value.trim();
   if (u === ADMIN_USER && p === ADMIN_PASS) {
 
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("dashboard").style.display = "flex";
-    loadData();
+    await loadData();
     renderAdminProducts();
     renderStats();
     renderMiniStats();
@@ -71,26 +71,36 @@ const DEFAULT_PRODUCTS = [
 
 let products = [];
 
-function loadData() {
-  const saved = localStorage.getItem("bpAdminProducts");
-  products = saved ? JSON.parse(saved) : [...DEFAULT_PRODUCTS];
+async function loadData() {
+  try {
+    const res = await fetch("/.netlify/functions/save-products");
+    const data = await res.json();
+    products = (data && data.length) ? data : [...DEFAULT_PRODUCTS];
+  } catch (e) {
+    console.error("Erreur chargement produits :", e);
+    products = [...DEFAULT_PRODUCTS];
+  }
 }
 
-function saveData() {
-  localStorage.setItem("bpAdminProducts", JSON.stringify(products));
-  localStorage.setItem("bpProducts", JSON.stringify(products));
+async function saveData() {
+  try {
+    await fetch("/.netlify/functions/save-products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(products)
+    });
+  } catch (e) {
+    console.error("Erreur sauvegarde produits :", e);
+    showAdminToast("⚠️ Erreur de sauvegarde, vérifie ta connexion.");
+  }
 }
 
 /* ===== NAVIGATION ===== */
 function showSection(name) {
-  // Cacher toutes les sections
   document.querySelectorAll(".section").forEach(s => s.style.display = "none");
-  // Afficher la section demandée
   const target = document.getElementById(`section-${name}`);
   if (target) target.style.display = "block";
-  // Mettre à jour les boutons actifs
   document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
-  // Trouver le bouton qui correspond
   document.querySelectorAll(".sidebar-btn").forEach(b => {
     if (b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${name}'`)) {
       b.classList.add("active");
@@ -180,7 +190,6 @@ function renderStats() {
 
 /* ===== MODAL PRODUIT ===== */
 
-// Prévisualisation image (dataURL)
 function clearImagePreview() {
   const wrap = document.getElementById("pImagePreviewWrap");
   const img  = document.getElementById("pImagePreview");
@@ -209,7 +218,6 @@ function setImagePreview(data) {
   if (hidden) hidden.value = data;
 }
 
-// Init écoute upload
 (function initImageUpload() {
   const fileInput = document.getElementById("pImageFile");
   if (!fileInput) return;
@@ -221,7 +229,6 @@ function setImagePreview(data) {
       return;
     }
 
-    // Limite simple pour éviter stockage énorme (10MB)
     if (file.size > 10 * 1024 * 1024) {
       showAdminToast("⚠️ Image trop lourde (max 10MB)." );
       fileInput.value = "";
@@ -253,7 +260,6 @@ function openProductModal(id = null) {
     document.getElementById("pBadge").value    = p.badge || "";
     document.getElementById("pImage").value    = p.image;
 
-    // Pré-remplir l’aperçu si image existante
     setImagePreview(p.image);
   } else {
     ["pName","pPrice","pOldPrice","pImage"].forEach(id => document.getElementById(id).value = "");
@@ -273,7 +279,6 @@ function closeProductModal() {
   document.getElementById("productModal").classList.remove("open");
 }
 
-// bouton retirer image
 document.addEventListener("click", (e) => {
   const btn = e.target && e.target.closest && e.target.closest(".image-remove");
   if (btn) {
@@ -282,7 +287,7 @@ document.addEventListener("click", (e) => {
 });
 
 
-function saveProduct() {
+async function saveProduct() {
   const name     = document.getElementById("pName").value.trim();
   const category = document.getElementById("pCategory").value;
   const price    = parseInt(document.getElementById("pPrice").value);
@@ -303,16 +308,16 @@ function saveProduct() {
     showAdminToast("✅ Produit ajouté !");
   }
 
-  saveData();
+  await saveData();
   renderAdminProducts();
   renderStats();
   closeProductModal();
 }
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
   if (!confirm("Supprimer ce produit ?")) return;
   products = products.filter(p => p.id !== id);
-  saveData();
+  await saveData();
   renderAdminProducts();
   renderStats();
   showAdminToast("🗑 Produit supprimé.");
