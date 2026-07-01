@@ -68,23 +68,28 @@ let products = [];
 
 async function loadData() {
   try {
-    const res = await fetch("/products.json?v=" + Date.now());
+    const res = await fetch("/.netlify/functions/save-products");
     const data = await res.json();
-    products = (data && data.length) ? data : [...DEFAULT_PRODUCTS];
+    products = (data && Array.isArray(data) && data.length) ? data : [...DEFAULT_PRODUCTS];
   } catch (e) {
+    console.error("Erreur chargement :", e);
     products = [...DEFAULT_PRODUCTS];
   }
 }
 
-function saveData() {
-  const blob = new Blob([JSON.stringify(products, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "products.json";
-  a.click();
-  URL.revokeObjectURL(url);
-  showAdminToast("📥 Téléchargé ! Uploade products.json sur GitHub pour publier.");
+async function saveData() {
+  try {
+    const res = await fetch("/.netlify/functions/save-products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(products)
+    });
+    if (!res.ok) throw new Error("Erreur serveur");
+    showAdminToast("✅ Sauvegardé en ligne !");
+  } catch (e) {
+    console.error("Erreur sauvegarde :", e);
+    showAdminToast("⚠️ Erreur de sauvegarde !");
+  }
 }
 
 /* ===== NAVIGATION ===== */
@@ -253,7 +258,7 @@ document.addEventListener("click", (e) => {
   if (btn) clearImagePreview();
 });
 
-function saveProduct() {
+async function saveProduct() {
   const name     = document.getElementById("pName").value.trim();
   const category = document.getElementById("pCategory").value;
   const price    = parseInt(document.getElementById("pPrice").value);
@@ -267,23 +272,21 @@ function saveProduct() {
   if (editId) {
     const idx = products.findIndex(p => p.id === editId);
     if (idx > -1) products[idx] = { id: editId, name, category, price, oldPrice, badge, image };
-    showAdminToast("✅ Produit modifié !");
   } else {
     const newId = products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
     products.push({ id: newId, name, category, price, oldPrice, badge, image });
-    showAdminToast("✅ Produit ajouté !");
   }
 
-  saveData();
+  await saveData();
   renderAdminProducts();
   renderStats();
   closeProductModal();
 }
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
   if (!confirm("Supprimer ce produit ?")) return;
   products = products.filter(p => p.id !== id);
-  saveData();
+  await saveData();
   renderAdminProducts();
   renderStats();
   showAdminToast("🗑 Produit supprimé.");
