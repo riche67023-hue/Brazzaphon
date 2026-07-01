@@ -2,7 +2,6 @@
    BRAZZAPHONE – admin.js
    ============================================================ */
 
-/* ===== AUTH ===== */
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "brazzaphone2025";
 
@@ -10,7 +9,6 @@ async function doLogin() {
   const u = document.getElementById("loginUser").value.trim();
   const p = document.getElementById("loginPass").value.trim();
   if (u === ADMIN_USER && p === ADMIN_PASS) {
-
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("dashboard").style.display = "flex";
     await loadData();
@@ -37,17 +35,14 @@ function doLogout() {
   document.getElementById("dashboard").style.display = "none";
 }
 
-/* ===== Mobile admin menu (overlay/slide) ===== */
 function toggleAdminMenu() {
   const sidebar = document.getElementById('adminSidebar');
   const overlay = document.getElementById('sidebarOverlay');
   if (!sidebar || !overlay) return;
-
   const isOpen = sidebar.classList.contains('open');
   sidebar.classList.toggle('open', !isOpen);
   overlay.classList.toggle('open', !isOpen);
 }
-
 
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && document.getElementById("loginScreen").style.display !== "none") doLogin();
@@ -73,26 +68,23 @@ let products = [];
 
 async function loadData() {
   try {
-    const res = await fetch("/.netlify/functions/save-products");
+    const res = await fetch("/products.json?v=" + Date.now());
     const data = await res.json();
     products = (data && data.length) ? data : [...DEFAULT_PRODUCTS];
   } catch (e) {
-    console.error("Erreur chargement produits :", e);
     products = [...DEFAULT_PRODUCTS];
   }
 }
 
-async function saveData() {
-  try {
-    await fetch("/.netlify/functions/save-products", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(products)
-    });
-  } catch (e) {
-    console.error("Erreur sauvegarde produits :", e);
-    showAdminToast("⚠️ Erreur de sauvegarde, vérifie ta connexion.");
-  }
+function saveData() {
+  const blob = new Blob([JSON.stringify(products, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "products.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  showAdminToast("📥 Téléchargé ! Uploade products.json sur GitHub pour publier.");
 }
 
 /* ===== NAVIGATION ===== */
@@ -100,8 +92,8 @@ function showSection(name) {
   document.querySelectorAll(".section").forEach(s => s.style.display = "none");
   const target = document.getElementById(`section-${name}`);
   if (target) target.style.display = "block";
-  document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".sidebar-btn").forEach(b => {
+    b.classList.remove("active");
     if (b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${name}'`)) {
       b.classList.add("active");
     }
@@ -154,9 +146,7 @@ function renderMiniStats() {
   el.innerHTML = [
     ["📦 Total", total], ["📱 Neufs", neufs], ["♻️ Reconditionnés", recon],
     ["🎧 Accessoires", acc], ["🔥 Promos", promos]
-  ].map(([label, val]) =>
-    `<div class="stat-chip">${label} : <strong>${val}</strong></div>`
-  ).join("");
+  ].map(([label, val]) => `<div class="stat-chip">${label} : <strong>${val}</strong></div>`).join("");
 }
 
 /* ===== STATS PAGE ===== */
@@ -173,14 +163,14 @@ function renderStats() {
   const el = document.getElementById("statsGrid");
   if (!el) return;
   el.innerHTML = [
-    ["📦 Total produits",      products.length],
-    ["📱 Téléphones neufs",    cats.neuf],
-    ["♻️ Reconditionnés",      cats.reconditionne],
-    ["🎧 Accessoires",         cats.accessoire],
-    ["🔥 En promotion",        products.filter(p => p.oldPrice).length],
-    ["💰 Prix moyen",          fmt(Math.round(totalVal / (products.length || 1)))],
-    ["📉 Prix le plus bas",    fmt(minPrice === Infinity ? 0 : minPrice)],
-    ["📈 Prix le plus haut",   fmt(maxPrice)],
+    ["📦 Total produits", products.length],
+    ["📱 Téléphones neufs", cats.neuf],
+    ["♻️ Reconditionnés", cats.reconditionne],
+    ["🎧 Accessoires", cats.accessoire],
+    ["🔥 En promotion", products.filter(p => p.oldPrice).length],
+    ["💰 Prix moyen", fmt(Math.round(totalVal / (products.length || 1)))],
+    ["📉 Prix le plus bas", fmt(minPrice === Infinity ? 0 : minPrice)],
+    ["📈 Prix le plus haut", fmt(maxPrice)],
   ].map(([label, val]) => `
     <div class="stat-card">
       <div class="stat-value">${val}</div>
@@ -189,16 +179,13 @@ function renderStats() {
 }
 
 /* ===== MODAL PRODUIT ===== */
-
 function clearImagePreview() {
   const wrap = document.getElementById("pImagePreviewWrap");
   const img  = document.getElementById("pImagePreview");
   const file = document.getElementById("pImageFile");
   const hidden = document.getElementById("pImage");
-
   if (img) img.src = "";
   if (wrap) wrap.style.display = "none";
-
   if (file) file.value = "";
   if (hidden) hidden.value = "";
 }
@@ -207,12 +194,7 @@ function setImagePreview(data) {
   const wrap = document.getElementById("pImagePreviewWrap");
   const img  = document.getElementById("pImagePreview");
   const hidden = document.getElementById("pImage");
-
-  if (!data) {
-    clearImagePreview();
-    return;
-  }
-
+  if (!data) { clearImagePreview(); return; }
   if (img) img.src = data;
   if (wrap) wrap.style.display = "block";
   if (hidden) hidden.value = data;
@@ -221,31 +203,22 @@ function setImagePreview(data) {
 (function initImageUpload() {
   const fileInput = document.getElementById("pImageFile");
   if (!fileInput) return;
-
   fileInput.addEventListener("change", () => {
     const file = fileInput.files && fileInput.files[0];
-    if (!file) {
-      clearImagePreview();
-      return;
-    }
-
+    if (!file) { clearImagePreview(); return; }
     if (file.size > 10 * 1024 * 1024) {
-      showAdminToast("⚠️ Image trop lourde (max 10MB)." );
+      showAdminToast("⚠️ Image trop lourde (max 10MB).");
       fileInput.value = "";
       clearImagePreview();
       return;
     }
-
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || "");
-      setImagePreview(dataUrl);
-    };
+    reader.onload = () => setImagePreview(String(reader.result || ""));
     reader.readAsDataURL(file);
   });
 })();
 
-function openProductModal(id = null) { 
+function openProductModal(id = null) {
   const modal = document.getElementById("productModal");
   document.getElementById("modalTitle").textContent = id ? "✏️ Modifier le produit" : "➕ Ajouter un produit";
   document.getElementById("editId").value = id || "";
@@ -259,19 +232,15 @@ function openProductModal(id = null) {
     document.getElementById("pOldPrice").value = p.oldPrice || "";
     document.getElementById("pBadge").value    = p.badge || "";
     document.getElementById("pImage").value    = p.image;
-
     setImagePreview(p.image);
   } else {
     ["pName","pPrice","pOldPrice","pImage"].forEach(id => document.getElementById(id).value = "");
     document.getElementById("pCategory").value = "neuf";
     document.getElementById("pBadge").value    = "";
-
     const fileInput = document.getElementById("pImageFile");
     if (fileInput) fileInput.value = "";
-
     clearImagePreview();
   }
-
   modal.classList.add("open");
 }
 
@@ -281,13 +250,10 @@ function closeProductModal() {
 
 document.addEventListener("click", (e) => {
   const btn = e.target && e.target.closest && e.target.closest(".image-remove");
-  if (btn) {
-    clearImagePreview();
-  }
+  if (btn) clearImagePreview();
 });
 
-
-async function saveProduct() {
+function saveProduct() {
   const name     = document.getElementById("pName").value.trim();
   const category = document.getElementById("pCategory").value;
   const price    = parseInt(document.getElementById("pPrice").value);
@@ -308,16 +274,16 @@ async function saveProduct() {
     showAdminToast("✅ Produit ajouté !");
   }
 
-  await saveData();
+  saveData();
   renderAdminProducts();
   renderStats();
   closeProductModal();
 }
 
-async function deleteProduct(id) {
+function deleteProduct(id) {
   if (!confirm("Supprimer ce produit ?")) return;
   products = products.filter(p => p.id !== id);
-  await saveData();
+  saveData();
   renderAdminProducts();
   renderStats();
   showAdminToast("🗑 Produit supprimé.");
