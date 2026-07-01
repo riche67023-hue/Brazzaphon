@@ -3,22 +3,10 @@
    Catalogue · Panier · Commande · WhatsApp
    ============================================================ */
 
-const WHATSAPP_NUMBER = "+242 056 145 113";
+const WHATSAPP_NUMBER = "+242056145113";
 
-window.PRODUCTS = [
-  { id: 1,  name: "Samsung Galaxy A55 5G 128Go", price: 185000, oldPrice: 210000, category: "neuf",          badge: "🔥 Promo",   image: "images/samsung-a55.jpg" },
-  { id: 2,  name: "Samsung Galaxy A35 128Go",    price: 145000, oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/samsung-a35.jpg" },
-  { id: 3,  name: "iPhone 13 128Go – Recond.",   price: 250000, oldPrice: 310000, category: "reconditionne", badge: "♻️ Recond.", image: "images/iphone13.jpg" },
-  { id: 4,  name: "iPhone 14 256Go",             price: 390000, oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/iphone14.jpg" },
-  { id: 5,  name: "Samsung S23 FE 256Go",        price: 280000, oldPrice: 330000, category: "neuf",          badge: "🔥 Promo",   image: "images/samsung-s23fe.jpg" },
-  { id: 6,  name: "iPhone 12 64Go – Recond.",    price: 170000, oldPrice: 220000, category: "reconditionne", badge: "♻️ Recond.", image: "images/iphone12.jpg" },
-  { id: 7,  name: "Écouteurs Bluetooth Pro",     price: 12000,  oldPrice: null,   category: "accessoire",    badge: null,         image: "images/ecouteurs.jpg" },
-  { id: 8,  name: "Chargeur Rapide USB-C 65W",   price: 8500,   oldPrice: null,   category: "accessoire",    badge: null,         image: "images/chargeur.jpg" },
-  { id: 9,  name: "Coque Samsung A55 Antichoc",  price: 3500,   oldPrice: null,   category: "accessoire",    badge: null,         image: "images/coque-a55.jpg" },
-  { id: 10, name: "Samsung Galaxy A15 128Go",    price: 98000,  oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/samsung-a15.jpg" },
-  { id: 11, name: "Batterie externe 20000mAh",   price: 15000,  oldPrice: 19000,  category: "accessoire",    badge: "🔥 Promo",   image: "images/batterie.jpg" },
-  { id: 12, name: "iPhone 11 64Go – Recond.",    price: 125000, oldPrice: 160000, category: "reconditionne", badge: "♻️ Recond.", image: "images/iphone11.jpg" }
-];
+/* ===== CATALOGUE — chargé depuis products.json ===== */
+window.PRODUCTS = [];
 
 /* ===== ÉTAT ===== */
 let cart = JSON.parse(localStorage.getItem("bpCart") || "[]");
@@ -27,14 +15,26 @@ let currentSearch  = "";
 
 /* ===== INIT ===== */
 document.addEventListener("DOMContentLoaded", async () => {
+
+  // Charger products.json (source unique de vérité)
   try {
-    const res = await fetch("/products.json?v=" + Date.now());
-    const data = await res.json();
-    if (data && Array.isArray(data) && data.length) {
-      window.PRODUCTS = data;
+    const res = await fetch("./products.json", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) {
+        window.PRODUCTS = data;
+      }
     }
   } catch (e) {
-    console.warn("Utilisation du catalogue par défaut.", e);
+    console.warn("Impossible de charger products.json :", e);
+  }
+
+  // Fallback localStorage uniquement si products.json est vide/inaccessible
+  if (!window.PRODUCTS.length) {
+    const saved = localStorage.getItem("bpAdminProducts");
+    if (saved) {
+      try { window.PRODUCTS = JSON.parse(saved); } catch (e) {}
+    }
   }
 
   renderProducts(window.PRODUCTS);
@@ -75,7 +75,11 @@ function renderProducts(list) {
     const badgeHTML = p.badge
       ? `<span class="product-badge ${badgeClass}">${p.badge}</span>` : "";
 
-    const catLabel = { neuf: "📱 Neuf", reconditionne: "♻️ Reconditionné", accessoire: "🎧 Accessoire" }[p.category] || "";
+    const catLabel = {
+      neuf: "📱 Neuf",
+      reconditionne: "♻️ Reconditionné",
+      accessoire: "🎧 Accessoire"
+    }[p.category] || "";
 
     grid.innerHTML += `
       <a class="product-card" href="product.html?id=${p.id}">
@@ -127,8 +131,9 @@ function applyFilters() {
     const catMap = {
       "neuf": "neuf", "nouveau": "neuf",
       "reconditionne": "reconditionne", "reconditionné": "reconditionne",
-      "recond": "reconditionne", "accessoire": "accessoire",
-      "accessoires": "accessoire", "promo": "promo"
+      "recond": "reconditionne", "recondition": "reconditionne",
+      "accessoire": "accessoire", "accessoires": "accessoire",
+      "promo": "promo"
     };
     const mapped = catMap[q] || null;
     list = list.filter(p => {
@@ -142,12 +147,30 @@ function applyFilters() {
   renderProducts(list);
 }
 
+/* ===== PARTAGE WHATSAPP ===== */
+function shareProductWhatsApp(id) {
+  const product = (window.PRODUCTS || []).find(p => p.id === id);
+  if (!product) return;
+  const url = `product.html?id=${product.id}`;
+  const msg = encodeURIComponent(
+    `Bonjour, voici un produit que je vous recommande :\n\n` +
+    `🛒 ${product.name}\n` +
+    `💰 Prix : ${fmt(product.price)}\n` +
+    `🔗 ${url}`
+  );
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank");
+}
+
 /* ===== PANIER ===== */
 function addToCart(id) {
   const product = window.PRODUCTS.find(p => p.id === id);
   if (!product) return;
   const existing = cart.find(c => c.id === id);
-  if (existing) { existing.qty += 1; } else { cart.push({ ...product, qty: 1 }); }
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    cart.push({ ...product, qty: 1 });
+  }
   saveCart();
   updateCartUI();
   showToast(`✅ ${product.name} ajouté au panier !`);
@@ -224,12 +247,10 @@ function showCheckout() {
   const lines = cart.map(c =>
     `<div class="order-line"><span>${c.name} x${c.qty}</span><span>${fmt(c.price * c.qty)}</span></div>`
   ).join("");
-
   document.getElementById("orderSummary").innerHTML = `
     <p class="order-summary-title">Récapitulatif</p>
     ${lines}
     <div class="order-line"><span>Total</span><span>${fmt(total)}</span></div>`;
-
   document.getElementById("modalOverlay").classList.add("open");
   toggleCart();
 }
@@ -251,30 +272,42 @@ function submitOrder() {
 
   const payLabels = { airtel: "Airtel Money", mtn: "MTN Money", cash: "Livraison Cash" };
   const total     = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  const lines = cart.map(c => `• ${c.name} x${c.qty} = ${fmt(c.price * c.qty)}`).join("\n");
-  const msg   = encodeURIComponent(
+  const lines     = cart.map(c => `• ${c.name} x${c.qty} = ${fmt(c.price * c.qty)}`).join("\n");
+
+  const msg = encodeURIComponent(
     `🛒 *NOUVELLE COMMANDE – Brazzaphone*\n\n` +
-    `👤 Nom : ${name}\n📞 Tél : ${phone}\n📍 Adresse : ${address}\n` +
+    `👤 Nom : ${name}\n` +
+    `📞 Tél : ${phone}\n` +
+    `📍 Adresse : ${address}\n` +
     `💳 Paiement : ${payLabels[payment.value]}\n\n` +
-    `📦 Produits :\n${lines}\n\n💰 *Total : ${fmt(total)}*`
+    `📦 Produits :\n${lines}\n\n` +
+    `💰 *Total : ${fmt(total)}*`
   );
 
-  const order = {
-    id: 'ord_' + Math.random().toString(16).slice(2) + '_' + Date.now(),
-    createdAt: new Date().toISOString(),
-    buyerName: name, buyerPhone: phone, buyerAddress: address,
-    payment: payment.value, status: 'pending',
-    items: cart.map(c => ({ id: c.id, name: c.name, qty: c.qty, price: c.price, subtotal: c.price * c.qty })),
-    total
-  };
-
+  // Sauvegarder commande dans localStorage (pour section admin)
   try {
-    const orders = JSON.parse(localStorage.getItem('bpOrders') || '[]');
-    orders.unshift(order);
-    localStorage.setItem('bpOrders', JSON.stringify(orders));
-  } catch (e) {}
+    const order = {
+      id: "ord_" + Math.random().toString(16).slice(2) + "_" + Date.now(),
+      createdAt: new Date().toISOString(),
+      buyerName: name,
+      buyerPhone: phone,
+      buyerAddress: address,
+      payment: payment.value,
+      status: "pending",
+      items: cart.map(c => ({ id: c.id, name: c.name, qty: c.qty, price: c.price, subtotal: c.price * c.qty })),
+      total
+    };
+    const ordersRaw = localStorage.getItem("bpOrders");
+    const orders = ordersRaw ? JSON.parse(ordersRaw) : [];
+    const safe = Array.isArray(orders) ? orders : [];
+    safe.unshift(order);
+    localStorage.setItem("bpOrders", JSON.stringify(safe));
+  } catch (e) {
+    console.warn("Impossible de sauvegarder bpOrders", e);
+  }
 
-  window.open(`https://wa.me/${WHATSAPP_NUMBER.replace(/\s/g,'')}?text=${msg}`, "_blank");
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`, "_blank");
+
   cart = [];
   saveCart();
   updateCartUI();
@@ -283,10 +316,13 @@ function submitOrder() {
 }
 
 /* ===== UTILITAIRES ===== */
-function fmt(n) { return (n || 0).toLocaleString("fr-FR") + " FCFA"; }
+function fmt(n) {
+  return (n || 0).toLocaleString("fr-FR") + " FCFA";
+}
 
 function showToast(msg) {
   const t = document.getElementById("toast");
+  if (!t) return;
   t.textContent = msg;
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 3000);

@@ -2,20 +2,21 @@
    BRAZZAPHONE – admin.js
    ============================================================ */
 
+/* ===== AUTH ===== */
 const ADMIN_USER = "admin";
 const ADMIN_PASS = "brazzaphone2025";
 
-async function doLogin() {
+function doLogin() {
   const u = document.getElementById("loginUser").value.trim();
   const p = document.getElementById("loginPass").value.trim();
   if (u === ADMIN_USER && p === ADMIN_PASS) {
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("dashboard").style.display = "flex";
-    await loadData();
+    loadData();
     renderAdminProducts();
     renderStats();
     renderMiniStats();
-    showSection('products');
+    showSection("products");
   } else {
     document.getElementById("loginError").textContent = "❌ Identifiants incorrects.";
   }
@@ -35,70 +36,70 @@ function doLogout() {
   document.getElementById("dashboard").style.display = "none";
 }
 
+/* ===== Mobile admin menu ===== */
 function toggleAdminMenu() {
-  const sidebar = document.getElementById('adminSidebar');
-  const overlay = document.getElementById('sidebarOverlay');
+  const sidebar = document.getElementById("adminSidebar");
+  const overlay = document.getElementById("sidebarOverlay");
   if (!sidebar || !overlay) return;
-  const isOpen = sidebar.classList.contains('open');
-  sidebar.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('open', !isOpen);
+  const isOpen = sidebar.classList.contains("open");
+  sidebar.classList.toggle("open", !isOpen);
+  overlay.classList.toggle("open", !isOpen);
 }
 
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && document.getElementById("loginScreen").style.display !== "none") doLogin();
+  if (e.key === "Enter" && document.getElementById("loginScreen").style.display !== "none") {
+    doLogin();
+  }
 });
 
 /* ===== DONNÉES ===== */
 const DEFAULT_PRODUCTS = [
-  { id: 1,  name: "Samsung Galaxy A55 5G 128Go", price: 185000, oldPrice: 210000, category: "neuf",          badge: "🔥 Promo",   image: "images/samsung-a55.jpg" },
-  { id: 2,  name: "Samsung Galaxy A35 128Go",    price: 145000, oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/samsung-a35.jpg" },
-  { id: 3,  name: "iPhone 13 128Go – Recond.",   price: 250000, oldPrice: 310000, category: "reconditionne", badge: "♻️ Recond.", image: "images/iphone13.jpg" },
-  { id: 4,  name: "iPhone 14 256Go",             price: 390000, oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/iphone14.jpg" },
-  { id: 5,  name: "Samsung S23 FE 256Go",        price: 280000, oldPrice: 330000, category: "neuf",          badge: "🔥 Promo",   image: "images/samsung-s23fe.jpg" },
-  { id: 6,  name: "iPhone 12 64Go – Recond.",    price: 170000, oldPrice: 220000, category: "reconditionne", badge: "♻️ Recond.", image: "images/iphone12.jpg" },
-  { id: 7,  name: "Écouteurs Bluetooth Pro",     price: 12000,  oldPrice: null,   category: "accessoire",    badge: null,         image: "images/ecouteurs.jpg" },
-  { id: 8,  name: "Chargeur Rapide USB-C 65W",   price: 8500,   oldPrice: null,   category: "accessoire",    badge: null,         image: "images/chargeur.jpg" },
-  { id: 9,  name: "Coque Samsung A55 Antichoc",  price: 3500,   oldPrice: null,   category: "accessoire",    badge: null,         image: "images/coque-a55.jpg" },
-  { id: 10, name: "Samsung Galaxy A15 128Go",    price: 98000,  oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/samsung-a15.jpg" },
-  { id: 11, name: "Batterie externe 20000mAh",   price: 15000,  oldPrice: 19000,  category: "accessoire",    badge: "🔥 Promo",   image: "images/batterie.jpg" },
-  { id: 12, name: "iPhone 11 64Go – Recond.",    price: 125000, oldPrice: 160000, category: "reconditionne", badge: "♻️ Recond.", image: "images/iphone11.jpg" }
+  { id: 1,  name: "Samsung Galaxy A55 5G 128Go",  price: 185000, oldPrice: 210000, category: "neuf",          badge: "🔥 Promo",   image: "images/samsung-a55.jpg" },
+  { id: 2,  name: "Samsung Galaxy A35 128Go",      price: 145000, oldPrice: null,   category: "neuf",          badge: "⭐ Nouveau", image: "images/samsung-a35.jpg" },
+  
 ];
 
 let products = [];
 
-async function loadData() {
-  try {
-    const res = await fetch("/.netlify/functions/save-products");
-    const data = await res.json();
-    products = (data && Array.isArray(data) && data.length) ? data : [...DEFAULT_PRODUCTS];
-  } catch (e) {
-    console.error("Erreur chargement :", e);
-    products = [...DEFAULT_PRODUCTS];
-  }
+function loadData() {
+  const saved = localStorage.getItem("bpAdminProducts");
+  products = saved ? JSON.parse(saved) : [...DEFAULT_PRODUCTS];
 }
 
+/* ===== SAUVEGARDE — écrit dans products.json via Netlify Function ===== */
 async function saveData() {
+  // 1. Backup local immédiat
+  localStorage.setItem("bpAdminProducts", JSON.stringify(products));
+
+  // 2. Publier sur le serveur → products.json lu par la boutique
   try {
     const res = await fetch("/.netlify/functions/save-products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(products)
     });
-    if (!res.ok) throw new Error("Erreur serveur");
-    showAdminToast("✅ Sauvegardé en ligne !");
+
+    if (res.ok) {
+      showAdminToast("✅ Boutique mise à jour automatiquement !");
+    } else {
+      const err = await res.text();
+      throw new Error(err);
+    }
   } catch (e) {
-    console.error("Erreur sauvegarde :", e);
-    showAdminToast("⚠️ Erreur de sauvegarde !");
+    console.error("save-products error:", e);
+    // Fallback : télécharger products.json manuellement
+    showAdminToast("⚠️ Sync auto échoué — télécharge products.json et remplace-le dans le projet.");
+    exportProductsJSON();
   }
 }
 
 /* ===== NAVIGATION ===== */
 function showSection(name) {
-  document.querySelectorAll(".section").forEach(s => s.style.display = "none");
+  document.querySelectorAll(".section").forEach(s => (s.style.display = "none"));
   const target = document.getElementById(`section-${name}`);
   if (target) target.style.display = "block";
+  document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".sidebar-btn").forEach(b => {
-    b.classList.remove("active");
     if (b.getAttribute("onclick") && b.getAttribute("onclick").includes(`'${name}'`)) {
       b.classList.add("active");
     }
@@ -168,13 +169,13 @@ function renderStats() {
   const el = document.getElementById("statsGrid");
   if (!el) return;
   el.innerHTML = [
-    ["📦 Total produits", products.length],
-    ["📱 Téléphones neufs", cats.neuf],
-    ["♻️ Reconditionnés", cats.reconditionne],
-    ["🎧 Accessoires", cats.accessoire],
-    ["🔥 En promotion", products.filter(p => p.oldPrice).length],
-    ["💰 Prix moyen", fmt(Math.round(totalVal / (products.length || 1)))],
-    ["📉 Prix le plus bas", fmt(minPrice === Infinity ? 0 : minPrice)],
+    ["📦 Total produits",    products.length],
+    ["📱 Téléphones neufs",  cats.neuf],
+    ["♻️ Reconditionnés",    cats.reconditionne],
+    ["🎧 Accessoires",       cats.accessoire],
+    ["🔥 En promotion",      products.filter(p => p.oldPrice).length],
+    ["💰 Prix moyen",        fmt(Math.round(totalVal / (products.length || 1)))],
+    ["📉 Prix le plus bas",  fmt(minPrice === Infinity ? 0 : minPrice)],
     ["📈 Prix le plus haut", fmt(maxPrice)],
   ].map(([label, val]) => `
     <div class="stat-card">
@@ -185,23 +186,23 @@ function renderStats() {
 
 /* ===== MODAL PRODUIT ===== */
 function clearImagePreview() {
-  const wrap = document.getElementById("pImagePreviewWrap");
-  const img  = document.getElementById("pImagePreview");
-  const file = document.getElementById("pImageFile");
+  const wrap   = document.getElementById("pImagePreviewWrap");
+  const img    = document.getElementById("pImagePreview");
+  const file   = document.getElementById("pImageFile");
   const hidden = document.getElementById("pImage");
-  if (img) img.src = "";
-  if (wrap) wrap.style.display = "none";
-  if (file) file.value = "";
+  if (img)    img.src = "";
+  if (wrap)   wrap.style.display = "none";
+  if (file)   file.value = "";
   if (hidden) hidden.value = "";
 }
 
 function setImagePreview(data) {
-  const wrap = document.getElementById("pImagePreviewWrap");
-  const img  = document.getElementById("pImagePreview");
+  const wrap   = document.getElementById("pImagePreviewWrap");
+  const img    = document.getElementById("pImagePreview");
   const hidden = document.getElementById("pImage");
   if (!data) { clearImagePreview(); return; }
-  if (img) img.src = data;
-  if (wrap) wrap.style.display = "block";
+  if (img)    img.src = data;
+  if (wrap)   wrap.style.display = "block";
   if (hidden) hidden.value = data;
 }
 
@@ -239,13 +240,17 @@ function openProductModal(id = null) {
     document.getElementById("pImage").value    = p.image;
     setImagePreview(p.image);
   } else {
-    ["pName","pPrice","pOldPrice","pImage"].forEach(id => document.getElementById(id).value = "");
+    ["pName", "pPrice", "pOldPrice", "pImage"].forEach(elId => {
+      const el = document.getElementById(elId);
+      if (el) el.value = "";
+    });
     document.getElementById("pCategory").value = "neuf";
     document.getElementById("pBadge").value    = "";
     const fileInput = document.getElementById("pImageFile");
     if (fileInput) fileInput.value = "";
     clearImagePreview();
   }
+
   modal.classList.add("open");
 }
 
@@ -253,12 +258,12 @@ function closeProductModal() {
   document.getElementById("productModal").classList.remove("open");
 }
 
-document.addEventListener("click", (e) => {
+document.addEventListener("click", e => {
   const btn = e.target && e.target.closest && e.target.closest(".image-remove");
   if (btn) clearImagePreview();
 });
 
-async function saveProduct() {
+function saveProduct() {
   const name     = document.getElementById("pName").value.trim();
   const category = document.getElementById("pCategory").value;
   const price    = parseInt(document.getElementById("pPrice").value);
@@ -272,28 +277,44 @@ async function saveProduct() {
   if (editId) {
     const idx = products.findIndex(p => p.id === editId);
     if (idx > -1) products[idx] = { id: editId, name, category, price, oldPrice, badge, image };
+    showAdminToast("✅ Produit modifié !");
   } else {
     const newId = products.length ? Math.max(...products.map(p => p.id)) + 1 : 1;
     products.push({ id: newId, name, category, price, oldPrice, badge, image });
+    showAdminToast("✅ Produit ajouté !");
   }
 
-  await saveData();
+  saveData();
   renderAdminProducts();
   renderStats();
   closeProductModal();
 }
 
-async function deleteProduct(id) {
+function deleteProduct(id) {
   if (!confirm("Supprimer ce produit ?")) return;
   products = products.filter(p => p.id !== id);
-  await saveData();
+  saveData();
   renderAdminProducts();
   renderStats();
   showAdminToast("🗑 Produit supprimé.");
 }
 
+/* ===== EXPORT MANUEL (fallback si Netlify Function indisponible) ===== */
+function exportProductsJSON() {
+  const data = JSON.stringify(products, null, 2);
+  const blob = new Blob([data], { type: "application/json" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "products.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ===== UTILITAIRES ===== */
-function fmt(n) { return (n || 0).toLocaleString("fr-FR") + " FCFA"; }
+function fmt(n) {
+  return (n || 0).toLocaleString("fr-FR") + " FCFA";
+}
 
 function catLabel(c) {
   return { neuf: "📱 Neuf", reconditionne: "♻️ Recond.", accessoire: "🎧 Accessoire" }[c] || c;
