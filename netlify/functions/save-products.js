@@ -1,39 +1,50 @@
-const fs = require('fs');
-const path = require('path');
+const { getStore } = require("@netlify/blobs");
 
 exports.handler = async (event) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Content-Type": "application/json"
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
   }
 
-  const filePath = path.join('/tmp', 'products.json');
+  const store = getStore("brazzaphone");
 
   try {
-    if (event.httpMethod === 'GET') {
-      let data = '[]';
+    if (event.httpMethod === "GET") {
+      let data;
       try {
-        data = fs.readFileSync(filePath, 'utf8');
+        data = await store.get("products");
       } catch (e) {
-        // Si le fichier n'existe pas encore en /tmp, on lit la version du dépôt
-        data = fs.readFileSync(path.join(__dirname, '../../products.json'), 'utf8');
+        data = null;
       }
-      return { statusCode: 200, headers, body: data };
+      return {
+        statusCode: 200,
+        headers,
+        body: data || "[]"
+      };
     }
 
-    if (event.httpMethod === 'POST') {
-      const products = event.body;
-      fs.writeFileSync(filePath, products);
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
+    if (event.httpMethod === "POST") {
+      await store.set("products", event.body);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true })
+      };
     }
 
-    return { statusCode: 405, headers, body: 'Method Not Allowed' };
+    return { statusCode: 405, headers, body: "Method Not Allowed" };
+
   } catch (error) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) };
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: error.message })
+    };
   }
 };
